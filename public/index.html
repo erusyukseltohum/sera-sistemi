@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sera İzlenebilirlik Sistemi</title>
+  <style>
+    :root {
+      --bg:#07111f; --panel:#0f1b2d; --panel2:#13243a; --line:#24344a;
+      --text:#eef6ff; --muted:#91a4bd; --green:#34d399; --amber:#fbbf24; --red:#f87171;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:linear-gradient(135deg,#06101f,#0a1728);color:var(--text)}
+    .wrap{max-width:1280px;margin:auto;padding:24px}
+    .hero,.card{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+    h1,h2,h3{margin:0 0 8px}
+    p{color:var(--muted);margin:0}
+    .roles,.grid3,.grid4,.grid2{display:grid;gap:14px}
+    .roles{grid-template-columns:repeat(3,1fr);margin-top:18px}
+    .grid4{grid-template-columns:repeat(4,1fr)}
+    .grid3{grid-template-columns:repeat(3,1fr)}
+    .grid2{grid-template-columns:repeat(2,1fr)}
+    button,.btn{border:0;border-radius:16px;padding:13px 16px;background:#1b2b43;color:var(--text);cursor:pointer;font-weight:700}
+    button.active,.primary{background:var(--green);color:#04110c}
+    .role{border:1px solid var(--line);background:var(--panel);padding:18px;border-radius:22px;text-align:left}
+    .role.active{border-color:var(--green);background:rgba(52,211,153,.12)}
+    .section{margin-top:18px}
+    input,select{width:100%;border:1px solid var(--line);background:#081525;color:var(--text);border-radius:14px;padding:12px;margin-top:6px}
+    label{font-size:13px;color:var(--muted)}
+    .kpi{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px}
+    .kpi b{font-size:28px;display:block}
+    .list{display:grid;gap:10px}
+    .row{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .muted{color:var(--muted);font-size:13px}
+    .tag{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800}
+    .ok{background:rgba(52,211,153,.18);color:var(--green)}
+    .warn{background:rgba(251,191,36,.18);color:var(--amber)}
+    .risk{background:rgba(248,113,113,.18);color:var(--red)}
+    .hidden{display:none}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+    .note{border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.09);padding:14px;border-radius:18px;color:#fde68a}
+    @media(max-width:850px){.roles,.grid4,.grid3,.grid2{grid-template-columns:1fr}.row{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>Sera İzlenebilirlik Platformu</h1>
+      <p>Artık gerçek backend ve SQLite veritabanına bağlı demo.</p>
+      <div class="roles">
+        <button class="role active" onclick="showRole('manager', this)">
+          <h3>Yönetici Girişi</h3><p>Kayıtları görür ve filtreler.</p>
+        </button>
+        <button class="role" onclick="showRole('field', this)">
+          <h3>Saha Ekibi Girişi</h3><p>Üretim verisi girer.</p>
+        </button>
+        <button class="role" onclick="showRole('admin', this)">
+          <h3>Sistem Yönetici Girişi</h3><p>Kullanıcı ve sistemi yönetir.</p>
+        </button>
+      </div>
+    </div>
+
+    <main id="manager" class="section">
+      <div class="card">
+        <h2>Yönetici Kayıt Ekranı</h2>
+        <p>Tüm kayıtlar backend’den gelir. Filtreler API üzerinden uygulanır.</p>
+        <div class="toolbar">
+          <button class="primary" onclick="toggleFilters()">Filtreleri Aç / Kapat</button>
+          <button onclick="clearFilters()">Filtreleri Temizle</button>
+          <button onclick="loadRecords()">Kayıtları Yenile</button>
+        </div>
+        <div id="filters" class="grid4 hidden">
+          <div><label>Başlangıç Tarihi</label><input type="date" id="startDate"></div>
+          <div><label>Bitiş Tarihi</label><input type="date" id="endDate"></div>
+          <div><label>Ürün Tipi</label><select id="cropType"><option value="">Tümü</option><option>Sebze</option><option>Meyve</option></select></div>
+          <div><label>Ürün Çeşidi</label><input id="variety" placeholder="Domates, Biber..."></div>
+        </div>
+      </div>
+      <div class="grid3 section">
+        <div class="kpi"><span class="muted">Toplam Kayıt</span><b id="totalCount">0</b></div>
+        <div class="kpi"><span class="muted">Aktif Kayıt</span><b id="activeCount">0</b></div>
+        <div class="kpi"><span class="muted">Pasif Kayıt</span><b id="passiveCount">0</b></div>
+      </div>
+      <div class="card section"><h2>Tüm Kayıtlar</h2><div id="recordList" class="list"></div></div>
+    </main>
+
+    <main id="field" class="section hidden">
+      <div class="card">
+        <h2>Saha Ekibi Veri Girişi</h2>
+        <p>Giriş yapan kişi: <b id="currentFieldUser">Ahmet Yılmaz</b></p>
+        <div class="grid3 section">
+          <div><label>Sera Numarası *</label><select id="fGreenhouse"><option>Sera 01</option><option>Sera 02</option><option>Sera 03</option><option>Sera 04</option><option>Sera 05</option><option>Sera 06</option><option>Sera 07</option><option>Sera 08</option><option>Sera 09</option><option>Sera 10</option></select></div>
+          <div><label>Bölüm / Parsel *</label><input id="fParcel" placeholder="A Blok, 1. Parsel"></div>
+          <div><label>Ürün Tipi *</label><select id="fCropType"><option>Sebze</option><option>Meyve</option></select></div>
+          <div><label>Ürün Çeşidi *</label><input id="fVariety" placeholder="Salkım Domates"></div>
+          <div><label>Ekim Tarihi</label><input id="fPlantingDate" type="date"></div>
+          <div><label>Tahmini Hasat Tarihi</label><input id="fEstimatedHarvestDate" type="date"></div>
+          <div><label>Gerçek Hasat Tarihi</label><input id="fActualHarvestDate" type="date"></div>
+          <div><label>Ekim Alanı</label><input id="fArea" placeholder="250 m²"></div>
+          <div><label>Sezon</label><input id="fSeason" placeholder="Bahar 2026"></div>
+          <div><label>Durum</label><select id="fStatus"><option>Aktif</option><option>Planlandı</option><option>Pasif</option></select></div>
+        </div>
+        <div class="section"><button class="primary" onclick="createRecord()">Saha Kaydını Gönder</button></div>
+      </div>
+    </main>
+
+    <main id="admin" class="section hidden">
+      <div class="grid2">
+        <div class="card">
+          <h2>Yeni Kullanıcı Oluştur</h2>
+          <div class="section">
+            <label>Ad Soyad</label><input id="uName" placeholder="Ali Veli">
+            <label>Kullanıcı Rolü</label><select id="uRole"><option>Yönetici</option><option>Saha Ekibi</option><option>Sistem Ekibi</option></select>
+            <label>İlk Şifre</label><input id="uPassword" type="password" placeholder="İlk giriş şifresi">
+          </div>
+          <div class="section"><button class="primary" onclick="createUser()">Kullanıcıyı Oluştur</button></div>
+          <div class="note section">Not: Bu demo ilk şifreyi düz metin saklıyor. Gerçek canlı sistemde şifreler mutlaka hashlenmelidir.</div>
+        </div>
+        <div class="card">
+          <h2>Kullanıcı Giriş / Çıkış Hareketleri</h2>
+          <div id="logs" class="list section"></div>
+        </div>
+      </div>
+      <div class="grid2 section">
+        <div class="card">
+          <h2>Kayıtlı Kullanıcılar</h2>
+          <div id="users" class="list"></div>
+        </div>
+        <div class="card">
+          <h2>Girilen Verileri Gör / Düzenle</h2>
+          <div id="adminRecords" class="list"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+let records = [];
+
+function api(path, options = {}) {
+  return fetch(path, {
+    headers: { "Content-Type": "application/json" },
+    ...options
+  }).then(async response => {
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "İşlem başarısız.");
+    return data;
+  });
+}
+
+function showRole(id, btn){
+ document.querySelectorAll("main").forEach(x=>x.classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+ document.querySelectorAll(".role").forEach(x=>x.classList.remove("active"));
+ btn.classList.add("active");
+ if (id === "admin") {
+   loadUsers();
+   loadLogs();
+   loadRecords();
+ }
+}
+
+function tagClass(status){return status==="Aktif"?"ok":status==="Planlandı"?"warn":"risk"}
+
+function row(r, edit=false){
+ return `<div class="row">
+   <div>
+     <b>${r.greenhouse} • ${r.parcel}</b>
+     <div class="muted">${r.crop_type} • ${r.variety} • ${r.season || "-"} • ${r.area || "-"}</div>
+     <div class="muted">Ekim: ${r.planting_date || "-"} • Tahmini Hasat: ${r.estimated_harvest_date || "-"} • Gerçek Hasat: ${r.actual_harvest_date || "-"}</div>
+     <div class="muted">Giren: ${r.entered_by} • ${r.entered_at}</div>
+   </div>
+   <div>
+     <span class="tag ${tagClass(r.status)}">${r.status}</span>
+     ${edit ? ` <button onclick="editRecord(${r.id})">Düzenle</button>` : ""}
+   </div>
+ </div>`
+}
+
+async function loadRecords(){
+ const query = new URLSearchParams();
+ const s=document.getElementById("startDate")?.value;
+ const e=document.getElementById("endDate")?.value;
+ const c=document.getElementById("cropType")?.value;
+ const v=document.getElementById("variety")?.value;
+
+ if (s) query.set("start_date", s);
+ if (e) query.set("end_date", e);
+ if (c) query.set("crop_type", c);
+ if (v) query.set("variety", v);
+
+ records = await api(`/api/records?${query.toString()}`);
+ renderRecords(records);
+}
+
+function renderRecords(list){
+ document.getElementById("recordList").innerHTML=list.map(r=>row(r)).join("") || "<p>Kayıt bulunamadı.</p>";
+ const adminRecords = document.getElementById("adminRecords");
+ if (adminRecords) adminRecords.innerHTML=records.map(r=>row(r,true)).join("") || "<p>Kayıt bulunamadı.</p>";
+ document.getElementById("totalCount").textContent=list.length;
+ document.getElementById("activeCount").textContent=list.filter(r=>r.status==="Aktif").length;
+ document.getElementById("passiveCount").textContent=list.filter(r=>r.status!=="Aktif").length;
+}
+
+async function createRecord(){
+ const payload = {
+   greenhouse: document.getElementById("fGreenhouse").value,
+   parcel: document.getElementById("fParcel").value,
+   crop_type: document.getElementById("fCropType").value,
+   variety: document.getElementById("fVariety").value,
+   planting_date: document.getElementById("fPlantingDate").value,
+   estimated_harvest_date: document.getElementById("fEstimatedHarvestDate").value,
+   actual_harvest_date: document.getElementById("fActualHarvestDate").value,
+   area: document.getElementById("fArea").value,
+   season: document.getElementById("fSeason").value,
+   status: document.getElementById("fStatus").value,
+   entered_by: document.getElementById("currentFieldUser").textContent
+ };
+ await api("/api/records", { method:"POST", body: JSON.stringify(payload) });
+ alert("Kayıt veritabanına eklendi.");
+ await loadRecords();
+}
+
+async function editRecord(id){
+ const record = records.find(r => r.id === id);
+ if (!record) return;
+
+ const nextStatus = prompt("Durumu düzenle: Aktif / Planlandı / Pasif", record.status);
+ if (!nextStatus) return;
+
+ await api(`/api/records/${id}`, {
+   method: "PUT",
+   body: JSON.stringify({ status: nextStatus })
+ });
+ alert("Kayıt güncellendi.");
+ await loadRecords();
+}
+
+async function loadUsers(){
+ const users = await api("/api/users");
+ document.getElementById("users").innerHTML = users.map(u => `
+   <div class="row">
+     <div><b>${u.full_name}</b><div class="muted">${u.role} • ${u.status}</div></div>
+     <button onclick="editUser(${u.id}, '${u.status}')">Durum Değiştir</button>
+   </div>
+ `).join("");
+}
+
+async function createUser(){
+ const payload = {
+   full_name: document.getElementById("uName").value,
+   role: document.getElementById("uRole").value,
+   initial_password: document.getElementById("uPassword").value
+ };
+ await api("/api/users", { method:"POST", body: JSON.stringify(payload) });
+ alert("Kullanıcı veritabanına eklendi.");
+ document.getElementById("uName").value = "";
+ document.getElementById("uPassword").value = "";
+ await loadUsers();
+}
+
+async function editUser(id, status){
+ const nextStatus = status === "Aktif" ? "Pasif" : "Aktif";
+ await api(`/api/users/${id}`, { method:"PUT", body: JSON.stringify({ status: nextStatus }) });
+ await loadUsers();
+}
+
+async function loadLogs(){
+ const logs = await api("/api/login-logs");
+ document.getElementById("logs").innerHTML=logs.map(l=>`
+   <div class="row">
+     <div><b>${l.user_name}</b><div class="muted">${l.role} • ${l.action_time}</div></div>
+     <span class="tag ${l.action==="Giriş"?"ok":"warn"}">${l.action}</span>
+   </div>
+ `).join("");
+}
+
+function toggleFilters(){document.getElementById("filters").classList.toggle("hidden")}
+function clearFilters(){
+ ["startDate","endDate","cropType","variety"].forEach(id=>{
+   const el = document.getElementById(id);
+   if (el) el.value="";
+ });
+ loadRecords();
+}
+
+["startDate","endDate","cropType","variety"].forEach(id => {
+  window.addEventListener("DOMContentLoaded", () => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", loadRecords);
+    if (el) el.addEventListener("change", loadRecords);
+  });
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  loadRecords();
+});
+</script>
+</body>
+</html>
